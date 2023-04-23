@@ -1,0 +1,90 @@
+<infinispan
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="urn:infinispan:config:14.0 https://infinispan.org/schemas/infinispan-config-14.0.xsd
+                            urn:infinispan:server:14.0 https://infinispan.org/schemas/infinispan-server-14.0.xsd"
+      xmlns="urn:infinispan:config:14.0"
+      xmlns:server="urn:infinispan:server:14.0"
+      xmlns:table-jdbc-store="urn:infinispan:config:store:sql:14.0"
+      xmlns:string-keyed-jdbc-store="urn:infinispan:config:store:jdbc:14.0">
+
+   <cache-container name="default" statistics="true" default-cache="default_cache">
+      <global-state/>
+      <distributed-cache name="default_cache"/>
+      <distributed-cache name="questionquestion">
+         <locking concurrency-level="1000" acquire-timeout="15000" striping="false"/>
+         <encoding>
+            <key media-type="application/x-protostream"/>
+            <value media-type="application/x-protostream"/>
+         </encoding>
+         <persistence passivation="false" availability-interval="-1">
+            <table-jdbc-store xmlns="urn:infinispan:config:store:sql:14.0" table-name="question_question" dialect="MYSQL" db-major-version="8" db-minor-version="0">
+               <connection-pool connection-url="jdbc:mysql://mysql:3306/gennydb"
+                         username="genny"
+                         password="password"
+                         driver="com.mysql.cj.jdbc.Driver"/>
+               <schema message-name="QuestionQuestion"
+                         key-message-name="QuestionQuestionKey"
+                         package="life.genny.qwandaq.persistence.questionquestion"
+                         embedded-key="true"/>
+            </table-jdbc-store>
+         </persistence>
+         <indexing enabled="true" storage="filesystem" path="indexes/questionquestions">
+            <indexed-entities>
+               <indexed-entity>life.genny.qwandaq.persistence.questionquestion.QuestionQuestion</indexed-entity>
+            </indexed-entities>
+        </indexing>
+      </distributed-cache>
+      <transport cluster="${infinispan.cluster.name:cluster}" stack="${infinispan.cluster.stack:tcp}" node-name="${infinispan.node.name:}"/>
+   </cache-container>
+
+   <server xmlns="urn:infinispan:server:14.0">
+      <interfaces>
+         <interface name="public">
+            <inet-address value="0.0.0.0"/>
+         </interface>
+      </interfaces>
+
+      <socket-bindings default-interface="public" port-offset="0">
+         <socket-binding name="default" port="11222"/>
+         <socket-binding name="memcached" port="11221"/>
+      </socket-bindings>
+      <security>
+         <credential-stores>
+            <credential-store name="credentials" path="credentials.pfx">
+               <clear-text-credential clear-text="secret"/>
+            </credential-store>
+         </credential-stores>
+         <security-realms>
+            <security-realm name="default">
+               <!-- Uncomment to enable TLS on the realm -->
+               <!-- server-identities>
+                  <ssl>
+                     <keystore path="application.keystore"
+                               password="password" alias="server"
+                               generate-self-signed-certificate-host="alyson.genny.life"/>
+                  </ssl>
+               </server-identities-->
+               <properties-realm groups-attribute="Roles">
+                  <user-properties path="users.properties"/>
+                  <group-properties path="groups.properties"/>
+               </properties-realm>
+            </security-realm>
+         </security-realms>
+      </security>
+
+      <endpoints socket-binding="default" security-realm="default">
+        <endpoint>
+          <hotrod-connector>
+            <authentication>
+              <sasl mechanisms="SCRAM-SHA-512 SCRAM-SHA-384 SCRAM-SHA-256 SCRAM-SHA-1 DIGEST-SHA-512 DIGEST-SHA-384 DIGEST-SHA-256 DIGEST-SHA DIGEST-MD5 PLAIN"
+                 server-name="infinispan"
+                 qop="auth"/>
+            </authentication>
+          </hotrod-connector>
+          <rest-connector>
+            <authentication mechanisms="DIGEST"/>
+          </rest-connector>
+        </endpoint>
+      </endpoints>
+   </server>
+</infinispan>
